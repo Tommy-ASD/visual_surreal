@@ -19,6 +19,11 @@ actix = "0.13.0"
 actix-web = "4.2.1"
 actix-files = "0.6.2"
 
+axum = { version = "0.6.9", features = ["ws"] }
+
+tower = "0.4.13"
+tower-http = { version = "0.4.0", features = ["fs"] }
+
 env_logger = "0.10.0"
 log = "0.4.17"
 
@@ -26,4 +31,4 @@ chrono = { version = "0.4.23", features = ["serde"] }
 
 dotenv = "0.15.0"
 dotenv_codegen = "0.15.0"
-surrealdb = "1.0.0-beta.8"
+surrealdb = { git = "https://github.com/surrealdb/surrealdb", branch="main" }

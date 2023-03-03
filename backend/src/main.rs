@@ -1,8 +1,10 @@
 use std::{
     fs::{create_dir_all, read_to_string, File},
     io::Write,
+    net::SocketAddr,
 };
 
+use ::axum::{handler, routing::get, Router};
 use async_recursion::async_recursion;
 use log::debug;
 use serde_json::{Map, Value};
@@ -10,29 +12,47 @@ use serde_json::{Map, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::borrow::Cow;
-use surrealdb::sql;
-use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::Ws;
 use surrealdb::opt::auth::Root;
+use surrealdb::sql;
+use surrealdb::Surreal;
 
-#[derive(Serialize, Deserialize)]
+mod axum_stuff;
+
+use axum_stuff::handler;
+
+use crate::axum_stuff::config;
+
+#[derive(Serialize, Deserialize, Debug)]
 struct Name {
-    first: Cow<'static, str>,
-    last: Cow<'static, str>,
+    first: Vec<Cow<'static, str>>,
+    middle: Vec<Cow<'static, str>>,
+    last: Vec<Cow<'static, str>>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Person {
-    #[serde(skip_serializing)]
-    id: Option<String>,
-    title: Cow<'static, str>,
+#[derive(Serialize, Deserialize, Debug)]
+struct Id {
+    birthdate: Cow<'static, str>,
     name: Name,
-    marketing: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Person {
+    id: String,
+    alive: bool,
 }
 
 #[tokio::main]
 async fn main() -> surrealdb::Result<()> {
+    let app = config(Router::new());
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+    println!("Connecting to database");
     let db = Surreal::new::<Ws>("localhost:8000").await?;
+    println!("Connected to database");
 
     // Signin as a namespace, database, or root user
     db.signin(Root {
@@ -40,77 +60,40 @@ async fn main() -> surrealdb::Result<()> {
         password: "root",
     })
     .await?;
+    println!("Signed in as root user");
 
     // Select a specific namespace and database
-    db.use_ns("namespace").use_db("database").await?;
-
-    // Create a new person with a random ID
-    let tobie: Person = db
-        .create("person")
-        .content(Person {
-            id: None,
-            title: "Founder & CEO".into(),
-            name: Name {
-                first: "Tobie".into(),
-                last: "Morgan Hitchcock".into(),
-            },
-            marketing: true,
-        })
-        .await?;
-
-    assert!(tobie.id.is_some());
-
-    // Create a new person with a specific ID
-    let mut jaime: Person = db
-        .create(("person", "jaime"))
-        .content(Person {
-            id: None,
-            title: "Founder & COO".into(),
-            name: Name {
-                first: "Jaime".into(),
-                last: "Morgan Hitchcock".into(),
-            },
-            marketing: false,
-        })
-        .await?;
-
-    assert_eq!(jaime.id.unwrap(), "person:jaime");
-
-    // Update a person record with a specific ID
-    jaime = db
-        .update(("person", "jaime"))
-        .merge(json!({ "marketing": true }))
-        .await?;
-
-    assert!(jaime.marketing);
+    db.use_ns("test").use_db("test").await?;
+    println!("Selected namespace and database");
 
     // Select all people records
     let people: Vec<Person> = db.select("person").await?;
-
-    assert!(!people.is_empty());
+    println!("People: {:?}", people);
 
     // Perform a custom advanced query
     let sql = r#"
-        SELECT marketing, count()
-        FROM type::table($table)
-        GROUP BY marketing
+    SELECT *, ->? AS out, <-? AS in
+    FROM person
+    FETCH out, in
     "#;
-
-    let groups = db.query(sql)
-        .bind(("table", "person"))
-        .await?;
-
-    dbg!(groups);
-
-    // Delete all people upto but not including Jaime
-    db.delete("person").range(.."jaime").await?;
-
-    // Delete all people
-    db.delete("person").await?;
+    let mut people = db.query(sql).await.unwrap();
+    println!("People: {:?}", people);
+    let ids: Vec<String> = people.take("id").unwrap();
+    for id in ids {
+        println!("ID: {:?}", id);
+    }
+    let out: Vec<Vec<Value>> = people.take("out").unwrap();
+    for out in out {
+        println!("Out: {:?}", out);
+    }
+    let in_: Vec<Vec<Value>> = people.take("in").unwrap();
+    for in_ in in_ {
+        println!("In: {:?}", in_);
+    }
 
     Ok(())
 }
-c
+
 /*
 This function sends a body to the database
 

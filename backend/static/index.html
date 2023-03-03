@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Example</title>
+    <meta charset="UTF-8">
+</head>
+
+<body>
+    <h1>WebSocket Example</h1>
+    <form id="input-form">
+        <label for="input">Input:</label>
+        <input type="text" id="input" name="input">
+        <button type="submit">Send</button>
+    </form>
+    <p>Response:</p>
+    <pre id="response"></pre><script>
+        // Connect to the WebSocket server
+        const socket = new WebSocket('ws://localhost:3000/ws');
+
+        // When the connection is open, log a message
+        socket.addEventListener('open', (event) => {
+            console.log('WebSocket connection opened.');
+        });
+
+        // When the connection is closed, log a message
+        socket.addEventListener('close', (event) => {
+            console.log('WebSocket connection closed.');
+        });
+
+        // When a message is received from the server, display it on the page
+        socket.addEventListener('message', (event) => {
+            const responseElement = document.getElementById('response');
+            responseElement.innerText = event.data;
+        });
+
+        // When the form is submitted, send the input value to the server
+        const form = document.getElementById('input-form');
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const inputElement = document.getElementById('input');
+            const inputValue = inputElement.value;
+            socket.send(inputValue);
+        });
+    </script>
+</body>
+
+</html>
