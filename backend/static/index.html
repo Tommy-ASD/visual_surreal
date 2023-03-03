@@ -3,7 +3,58 @@
 
 <head>
     <title>WebSocket Example</title>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8"><style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+    
+        h1 {
+            text-align: center;
+            margin-top: 1em;
+        }
+    
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 1em;
+        }
+    
+        label {
+            margin-right: 0.5em;
+        }
+    
+        input[type="text"] {
+            padding: 0.5em;
+            border-radius: 0.5em;
+            border: 1px solid #ccc;
+        }
+    
+        button[type="submit"] {
+            padding: 0.5em 1em;
+            border-radius: 0.5em;
+            border: none;
+            background-color: #4caf50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 0.5em;
+        }
+    
+        pre {
+            margin-top: 1em;
+            padding: 1em;
+            background-color: #f7f7f7;
+            border-radius: 0.5em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
 </head>
 
 <body>
@@ -14,7 +65,8 @@
         <button type="submit">Send</button>
     </form>
     <p>Response:</p>
-    <pre id="response"></pre><script>
+    <pre id="response"></pre>
+    <script>
         // Connect to the WebSocket server
         const socket = new WebSocket('ws://localhost:3000/ws');
 
