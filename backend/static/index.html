@@ -66,6 +66,7 @@
     </form>
     <p>Response:</p>
     <pre id="response"></pre>
+    <script type="module" src="static/app.js"></script>
     <script>
         // Connect to the WebSocket server
         const socket = new WebSocket('ws://localhost:3000/ws');
@@ -94,6 +95,7 @@
             const inputValue = inputElement.value;
             socket.send(inputValue);
         });
+
     </script>
 </body>
 

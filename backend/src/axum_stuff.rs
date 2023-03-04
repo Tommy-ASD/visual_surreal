@@ -1,11 +1,11 @@
-use std::{fs::File, io::Read};
+use std::{convert::Infallible, fs::File};
 
 use axum::{
     body::{boxed, Body, BoxBody},
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     http::{Request, Response, StatusCode, Uri},
     response::{self, IntoResponse},
-    routing::get,
+    routing::{get, get_service},
     Router,
 };
 use tower::ServiceExt;
@@ -15,7 +15,21 @@ pub fn config(router: Router) -> Router {
     router
         .route("/", get(root))
         .route("/ws", get(handler))
-        .route("/static", get(req_handler))
+        .route("/surrealdb.js", get(srdb))
+        .route("/surrealdb.js/", get(srdb))
+        .route("/node_modules/surrealdb.js", get(srdb))
+        .route("/node_modules/surrealdb.js/", get(srdb))
+        .nest_service("/scripts", {
+            get_service(ServeDir::new("./static/node_modules")).handle_error(handle_error)
+        })
+        .nest_service("/static", {
+            get_service(ServeDir::new("./static")).handle_error(handle_error)
+        })
+}
+
+async fn handle_error(err: Infallible) -> impl IntoResponse {
+    println!("Error: {err}");
+    (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong...")
 }
 
 pub async fn handler(ws: WebSocketUpgrade) -> response::Response {
@@ -65,32 +79,33 @@ pub async fn handle_socket(mut socket: WebSocket) {
 
 // basic handler that responds with a static string
 async fn root() -> Result<Response<BoxBody>, (StatusCode, String)> {
-    match format!("/static/index.html").parse() {
+    match format!("/index.html").parse() {
         Ok(uri) => get_static_file(uri).await,
         Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid URI".to_string())),
     }
 }
 
-async fn req_handler(uri: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
-    let res = get_static_file(uri.clone()).await?;
+async fn srdb() -> Result<Response<BoxBody>, (StatusCode, String)> {
+    match format!("/node_modules/surrealdb.js").parse() {
+        Ok(uri) => get_static_file(uri).await,
+        Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid URI".to_string())),
+    }
+}
 
-    if res.status() == StatusCode::NOT_FOUND {
-        // try with `.html`
-        // TODO: handle if the Uri has query parameters
-        match format!("{uri}").parse() {
-            Ok(uri_html) => get_static_file(uri_html).await,
-            Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid URI".to_string())),
-        }
-    } else {
-        Ok(res)
+async fn load_script(script: &str) -> Result<Response<BoxBody>, (StatusCode, String)> {
+    match format!("/node_modules/{}", script).parse() {
+        Ok(uri) => get_static_file(uri).await,
+        Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid URI".to_string())),
     }
 }
 
 async fn get_static_file(uri: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
+    println!("Fetching file: {}", uri);
+
     let req = Request::builder().uri(uri).body(Body::empty()).unwrap();
 
     // `ServeDir` implements `tower::Service` so we can call it with `tower::ServiceExt::oneshot`
-    match ServeDir::new(".").oneshot(req).await {
+    match ServeDir::new("./static").oneshot(req).await {
         Ok(res) => Ok(res.map(boxed)),
         Err(err) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,

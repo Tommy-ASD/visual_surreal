@@ -20,12 +20,15 @@ actix-web = "4.2.1"
 actix-files = "0.6.2"
 
 axum = { version = "0.6.9", features = ["ws"] }
+axum-extra = { version = "0.7.0", features = ["query", "cookie", "cookie-private", "cookie-signed", "cookie-key-expansion", "typed-routing"] }
 
 tower = "0.4.13"
 tower-http = { version = "0.4.0", features = ["fs"] }
 
 env_logger = "0.10.0"
 log = "0.4.17"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 chrono = { version = "0.4.23", features = ["serde"] }
 

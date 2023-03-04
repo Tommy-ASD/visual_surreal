@@ -44,6 +44,7 @@ struct Person {
 
 #[tokio::main]
 async fn main() -> surrealdb::Result<()> {
+    env_logger::init();
     let app = config(Router::new());
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     axum::Server::bind(&addr)
